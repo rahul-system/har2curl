@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HAR to curl</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #fff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e2dd;
+    --accent: #2f5bd3; --ok: #1f7a4d; --redir: #8a6d1a; --err: #c0392b; --code: #f2f1ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --panel: #1f1f1d; --text: #ecebe6; --muted: #9b9a94; --line: #33322f;
+      --accent: #7c9cff; --ok: #4cc38a; --redir: #e0b44a; --err: #ff6b5b; --code: #262624;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+  ol.steps { margin: 0; padding-left: 20px; }
+  ol.steps li { margin: 4px 0; }
+  #drop { border: 2px dashed var(--line); border-radius: 10px; padding: 36px 16px; text-align: center;
+    cursor: pointer; background: var(--panel); margin-bottom: 16px; transition: border-color .15s, background .15s; }
+  #drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+  #drop strong { display: block; font-size: 17px; margin-bottom: 4px; }
+  #drop span { color: var(--muted); }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .controls input[type=text] { flex: 1 1 240px; }
+  input[type=text], select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); color: var(--text); }
+  label.check { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:hover { filter: brightness(0.96); }
+  .summary { color: var(--muted); margin: 14px 0 8px; }
+  .warn { color: var(--err); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  #list { display: flex; flex-direction: column; gap: 6px; }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  summary { display: flex; gap: 10px; align-items: center; padding: 9px 12px; cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  .status { font: 600 12px/1 ui-monospace, Menlo, monospace; padding: 4px 7px; border-radius: 5px; min-width: 38px; text-align: center; color: #fff; }
+  .s2 { background: var(--ok); } .s3 { background: var(--redir); } .s4, .s5 { background: var(--err); } .sx { background: var(--muted); }
+  .method { font: 600 12px ui-monospace, Menlo, monospace; min-width: 56px; }
+  .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .host { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  summary button { padding: 3px 10px; font-size: 13px; }
+  pre { margin: 0; padding: 12px; background: var(--code); border-top: 1px solid var(--line); border-radius: 0 0 8px 8px;
+    overflow-x: auto; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre; }
+  @media (max-width: 600px) { .host { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>HAR to curl</h1>
+  <p class="sub">Turn a network log (.har) from a BrowserStack App Live session into curl commands you can paste into a bug ticket. Your file stays on your computer. Nothing is uploaded.</p>
+
+  <div class="card">
+    <strong>How to use</strong>
+    <ol class="steps">
+      <li>In your BrowserStack App Live session, download the network logs as a <code>.har</code> file.</li>
+      <li>Drop that file in the box below (or click it to choose the file).</li>
+      <li>Type part of the URL you care about in the filter box, e.g. <code>leadsquared.com</code> or <code>Leads.Get</code>.</li>
+      <li>Keep <b>Hide secrets</b> ticked, then click <b>Copy</b> on a request and paste it into your ticket.</li>
+    </ol>
+    <p class="note">Red badges (4xx / 5xx) are requests that failed. They're usually the ones to report.</p>
+  </div>
+
+  <div id="drop" tabindex="0">
+    <strong>Drop your .har file here</strong>
+    <span id="dropHint">or click to choose a file</span>
+    <input type="file" id="file" accept=".har,.json,application/json" hidden>
+  </div>
+
+  <section id="results" hidden>
+    <div class="card controls">
+      <input type="text" id="host" placeholder="Filter: URL contains… (e.g. leadsquared.com)">
+      <select id="method"><option value="">All methods</option></select>
+      <label class="check"><input type="checkbox" id="redact" checked> Hide secrets</label>
+      <button class="primary" id="copyAll">Copy all shown</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div id="list"></div>
+  </section>
+</main>
+
+<script src="lib.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let har = null;
+
+  const drop = $('drop');
+  drop.addEventListener('click', () => $('file').click());
+  drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') $('file').click(); });
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  });
+  $('file').addEventListener('change', (e) => { if (e.target.files[0]) load(e.target.files[0]); });
+
+  async function load(file) {
+    $('dropHint').textContent = `Reading ${file.name}…`;
+    try {
+      har = JSON.parse(await file.text());
+      if (!Array.isArray(har?.log?.entries)) throw new Error('no log.entries');
+    } catch {
+      har = null;
+      $('results').hidden = true;
+      $('dropHint').innerHTML = '<span class="warn">That doesn\'t look like a .har file. Please try another file.</span>';
+      return;
+    }
+    $('dropHint').textContent = `Loaded ${file.name}. Drop another file to replace it.`;
+    const methods = [...new Set(har.log.entries.map((e) => (e.request?.method ?? 'GET').toUpperCase()))].sort();
+    $('method').innerHTML = '<option value="">All methods</option>' + methods.map((m) => `<option>${m}</option>`).join('');
+    $('results').hidden = false;
+    render();
+  }
+
+  let shown = [];
+  function render() {
+    if (!har) return;
+    const redact = $('redact').checked;
+    shown = har2curl.convert(har, { host: $('host').value.trim(), method: $('method').value, redact });
+    const failed = shown.filter((r) => Number(r.status) >= 400).length;
+    $('summary').innerHTML =
+      `${shown.length} of ${har.log.entries.length} requests shown` +
+      (failed ? ` · <span class="warn">${failed} failed</span>` : '') +
+      (redact ? '' : ' · <span class="warn">Secrets are visible. Don\'t share this output.</span>');
+
+    const list = $('list');
+    list.textContent = '';
+    shown.forEach((r) => {
+      const d = document.createElement('details');
+      const s = document.createElement('summary');
+      const cls = /^[2-5]/.test(String(r.status)) ? 's' + String(r.status)[0] : 'sx';
+      let host = '';
+      try { host = new URL(r.url).host; } catch {}
+      s.innerHTML = `<span class="status ${cls}"></span><span class="method"></span><span class="path"></span><span class="host"></span><button>Copy</button>`;
+      s.children[0].textContent = r.status;
+      s.children[1].textContent = r.method;
+      s.children[2].textContent = r.path;
+      s.children[2].title = r.url;
+      s.children[3].textContent = host;
+      s.querySelector('button').addEventListener('click', (e) => { e.preventDefault(); copy(r.curl, e.target); });
+      d.appendChild(s);
+      // Only build the (possibly large) curl text when the row is opened.
+      d.addEventListener('toggle', () => {
+        if (d.open && !d.querySelector('pre')) {
+          const pre = document.createElement('pre');
+          pre.textContent = r.curl;
+          d.appendChild(pre);
+        }
+      });
+      list.appendChild(d);
+    });
+  }
+
+  async function copy(text, btn) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const old = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => (btn.textContent = old), 1200);
+  }
+
+  $('copyAll').addEventListener('click', (e) =>
+    copy(shown.map((r) => `# [${r.status}] ${r.method} ${r.path}\n${r.curl}`).join('\n\n'), e.target));
+  $('host').addEventListener('input', render);
+  $('method').addEventListener('change', render);
+  $('redact').addEventListener('change', render);
+</script>
+</body>
+</html>
