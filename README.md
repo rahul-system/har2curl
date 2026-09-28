@@ -43,7 +43,7 @@ No dependencies. The HAR is read locally and nothing leaves your machine.
    npx github:rahul-system/har2curl session.har --redact > calls.sh
    ```
 
-   This replaces the values of these headers: `Authorization`, `Cookie`, `X-Api-Key`, `X-Auth-Token`. It also replaces these URL query parameters: `token`, `authtoken`, `access_token`, `apikey`, `api_key`, `password`, `sessionid`. Request bodies are **not** redacted, so check them before sharing.
+   This replaces the values of `Authorization`, `Cookie`, and any header whose name contains `token`, `authkey`, `accesskey`, `secretkey` or `api-key` (e.g. `x-lsq-auth-token`, `x-lsq-mobile-authkey`). It also replaces these URL query parameters: `token`, `authtoken`, `access_token`, `apikey`, `api_key`, `password`, `sessionid`. Request bodies are **not** redacted, so check them before sharing.
 
 5. **Run a command.** Copy any curl command from the output into your terminal, or run the saved file with `sh calls.sh`.
 
@@ -53,7 +53,7 @@ No dependencies. The HAR is read locally and nothing leaves your machine.
 | --- | --- |
 | `--host <substr>` | Keep only requests whose URL contains `<substr>` |
 | `--method <verb>` | Keep only requests with this HTTP method (case-insensitive) |
-| `--redact` | Replace known secret headers and query params with `REDACTED` |
+| `--redact` | Replace secret-looking headers and known secret query params with `REDACTED` |
 
 A summary such as `12/340 request(s) converted (host ~ leadsquared.com)` is printed to stderr. It doesn't end up in the file when you redirect the output with `>`.
 

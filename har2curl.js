@@ -26,7 +26,7 @@ const methodFilter = flagValue('--method');
 const redact = rest.includes('--redact');
 
 const SECRET_PARAMS = /^(token|authtoken|access_token|apikey|api_key|password|sessionid)$/i;
-const SECRET_HEADERS = /^(authorization|cookie|x-api-key|x-auth-token)$/i;
+const SECRET_HEADERS = /^(authorization|cookie)$|token|authkey|accesskey|secretkey|api-key/i;
 
 const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 
