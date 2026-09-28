@@ -1,6 +1,6 @@
 // Shared HAR → curl conversion, used by the CLI (har2curl.js) and the web page (index.html).
 (function (root) {
-  const SECRET_PARAMS = /^(token|authtoken|access_token|apikey|api_key|password|sessionid)$/i;
+  const SECRET_PARAMS = /^(token|authtoken|access_token|accesskey|secretkey|apikey|api_key|password|sessionid)$/i;
   const SECRET_HEADERS = /^(authorization|cookie)$|token|authkey|accesskey|secretkey|api-key/i;
 
   const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;

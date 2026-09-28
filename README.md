@@ -45,7 +45,7 @@ No dependencies. The HAR is read locally and nothing leaves your machine.
    npx github:rahul-system/har2curl session.har --redact > calls.sh
    ```
 
-   This replaces the values of `Authorization`, `Cookie`, and any header whose name contains `token`, `authkey`, `accesskey`, `secretkey` or `api-key` (e.g. `x-lsq-auth-token`, `x-lsq-mobile-authkey`). It also replaces these URL query parameters: `token`, `authtoken`, `access_token`, `apikey`, `api_key`, `password`, `sessionid`. Request bodies are **not** redacted, so check them before sharing.
+   This replaces the values of `Authorization`, `Cookie`, and any header whose name contains `token`, `authkey`, `accesskey`, `secretkey` or `api-key` (e.g. `x-lsq-auth-token`, `x-lsq-mobile-authkey`). It also replaces these URL query parameters: `token`, `authtoken`, `access_token`, `accessKey`, `secretKey`, `apikey`, `api_key`, `password`, `sessionid`. Request bodies are **not** redacted, so check them before sharing.
 
 5. **Run a command.** Copy any curl command from the output into your terminal, or run the saved file with `sh calls.sh`.
 

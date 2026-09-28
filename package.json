@@ -12,5 +12,8 @@
   "engines": {
     "node": ">=14"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
 }
