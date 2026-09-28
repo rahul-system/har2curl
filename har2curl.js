@@ -8,6 +8,7 @@
 // No dependencies. Reads the HAR locally; nothing leaves the machine.
 
 const fs = require('fs');
+const { convert } = require('./lib');
 
 const [, , harPath, ...rest] = process.argv;
 if (!harPath) {
@@ -25,59 +26,14 @@ const hostFilter = flagValue('--host');
 const methodFilter = flagValue('--method');
 const redact = rest.includes('--redact');
 
-const SECRET_PARAMS = /^(token|authtoken|access_token|apikey|api_key|password|sessionid)$/i;
-const SECRET_HEADERS = /^(authorization|cookie)$|token|authkey|accesskey|secretkey|api-key/i;
-
-const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
-
-const pathOf = (raw) => {
-  try {
-    return new URL(raw).pathname;
-  } catch {
-    return raw;
-  }
-};
-
-const scrubUrl = (raw) => {
-  if (!redact) return raw;
-  try {
-    const u = new URL(raw);
-    for (const k of [...u.searchParams.keys()]) {
-      if (SECRET_PARAMS.test(k)) u.searchParams.set(k, 'REDACTED');
-    }
-    return u.toString();
-  } catch {
-    return raw;
-  }
-};
-
 const har = JSON.parse(fs.readFileSync(harPath, 'utf8'));
 const entries = har?.log?.entries ?? [];
 
-let converted = 0;
-for (const entry of entries) {
-  const req = entry.request;
-  if (!req?.url) continue;
-  if (hostFilter && !req.url.includes(hostFilter)) continue;
-  if (methodFilter && req.method?.toUpperCase() !== methodFilter.toUpperCase()) continue;
-
-  const method = (req.method ?? 'GET').toUpperCase();
-  const url = shq(scrubUrl(req.url));
-  const parts = [method === 'GET' ? `curl ${url}` : `curl -X ${method} ${url}`];
-
-  for (const h of req.headers ?? []) {
-    // HTTP/2 pseudo-headers and values curl recomputes itself.
-    if (h.name.startsWith(':') || /^(host|content-length)$/i.test(h.name)) continue;
-    const value = redact && SECRET_HEADERS.test(h.name) ? 'REDACTED' : h.value;
-    parts.push(` -H ${shq(`${h.name}: ${value}`)}`);
-  }
-
-  if (req.postData?.text) parts.push(` --data-raw ${shq(req.postData.text)}`);
-
-  console.log(`# [${entry.response?.status ?? '?'}] ${method} ${pathOf(req.url)}`);
-  console.log(parts.join(' \\\n'));
+const results = convert(har, { host: hostFilter, method: methodFilter, redact });
+for (const r of results) {
+  console.log(`# [${r.status}] ${r.method} ${r.path}`);
+  console.log(r.curl);
   console.log();
-  converted++;
 }
 
 const notes = [
@@ -88,5 +44,5 @@ const notes = [
   .filter(Boolean)
   .join(', ');
 console.error(
-  `${converted}/${entries.length} request(s) converted${notes ? ` (${notes})` : ''}`,
+  `${results.length}/${entries.length} request(s) converted${notes ? ` (${notes})` : ''}`,
 );

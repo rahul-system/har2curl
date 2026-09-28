@@ -4,6 +4,8 @@ Turn a HAR export (for example from a BrowserStack App Live session) into curl c
 
 No dependencies. The HAR is read locally and nothing leaves your machine.
 
+**Not comfortable with the terminal?** Use the web page instead: https://rahul-system.github.io/har2curl/. Drop your `.har` file on it, filter, and click **Copy**. The file is processed in your browser and never uploaded.
+
 ## Requirements
 
 - Node.js 14 or newer (`node --version` to check)
