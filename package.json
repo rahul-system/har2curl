@@ -1,0 +1,9 @@
+{
+  "name": "har2curl",
+  "version": "1.0.0",
+  "description": "Turn a HAR export (e.g. BrowserStack App Live) into curl commands",
+  "bin": { "har2curl": "har2curl.js" },
+  "files": ["har2curl.js"],
+  "engines": { "node": ">=14" },
+  "license": "MIT"
+}
